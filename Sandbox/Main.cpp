@@ -15,7 +15,6 @@ int main() {
     auto window = Window{};
     window.setFramebufferSize(800, 600);
     window.setTitle("Sandbox");
-    window.setResizeable(false);
     window.show();
 
     auto device = GraphicsDevice{};
@@ -26,8 +25,6 @@ int main() {
     auto texture1 = Texture{ device, Image::create(1, 1, Color8::Blue) };
     auto texture2 = Texture{ device, Image::create(1, 1, Color8::Red) };
     auto texture3 = Texture{ device, Image::create(1, 1, Color8::Green) };
-
-    auto scene = Scene{};
 
     auto head = Sprite{};
     head.texture = texture1;
@@ -48,7 +45,7 @@ int main() {
     camera.size = window.getFramebufferSize();
 
     while (!window.isCloseRequested()) {
-        window.poll();
+        window.pollEvents();
 
         for (const auto& event : window.getPendingEvents()) {
             if (event.is<WindowResizeEndEvent>()) {
@@ -59,12 +56,16 @@ int main() {
             }
         }
 
-        scene.sprites.push_back(body);
-        scene.sprites.push_back(legs);
-        scene.sprites.push_back(head);
+        if (!device.isSuspended()) {
+            auto scene = Scene{};
 
-        renderer.setCamera(device, camera);
-        renderer.draw(device, scene);
+            scene.sprites.push_back(body);
+            scene.sprites.push_back(legs);
+            scene.sprites.push_back(head);
+
+            renderer.setCamera(device, camera);
+            renderer.draw(device, scene);
+        }
     }
 
     return 0;

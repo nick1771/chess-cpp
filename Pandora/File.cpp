@@ -7,8 +7,6 @@
 namespace Pandora {
 
     std::vector<u8> readFileToBytes(const std::filesystem::path& path) {
-        auto result = std::filesystem::absolute(path);
-
         if (!std::filesystem::exists(path)) {
             throw std::runtime_error(std::format("File {} does not exist", path.string()));
         }
