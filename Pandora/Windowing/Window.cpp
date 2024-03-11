@@ -13,8 +13,12 @@ namespace Pandora {
         _implementation->show();
     }
 
-    void Window::poll() {
-        _implementation->poll();
+    void Window::pollEvents() {
+        _implementation->pollEvents();
+    }
+
+    void Window::waitEvents() {
+        _implementation->waitEvents();
     }
 
     bool Window::isKeyPressed(KeyboardKeyType keyType) const {
@@ -37,6 +41,10 @@ namespace Pandora {
 
     void Window::setCloseRequested(bool isCloseRequested) {
         _implementation->isCloseRequested = isCloseRequested;
+    }
+
+    void Window::setResizeable(bool isResizeable) const {
+        _implementation->setResizeable(isResizeable);
     }
 
     void Window::setTitle(std::string_view title) const {

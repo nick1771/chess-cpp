@@ -50,5 +50,15 @@ namespace Pandora {
         constexpr bool operator==(const Vector2<T> other) const {
             return x == other.x && y == other.y;
         }
+
+        template<std::convertible_to<T> B>
+        constexpr Vector2<T> operator*(const Vector2<B> other) const {
+            return { x * static_cast<T>(other.x), y * static_cast<T>(other.y) };
+        }
+
+        template<std::convertible_to<T> B>
+        constexpr Vector2<T> operator/(const Vector2<B> other) const {
+            return { x / static_cast<T>(other.x), y / static_cast<T>(other.y) };
+        }
     };
 }

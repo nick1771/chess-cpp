@@ -4,7 +4,7 @@
 
 namespace Pandora {
 
-    float DegreesToRadians(float degrees) {
+    float degreesToRadians(float degrees) {
         return degrees / (std::numbers::pi_v<float> * 180.0f);
     }
 }

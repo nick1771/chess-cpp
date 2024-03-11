@@ -1,43 +1,31 @@
 #pragma once
 
+#include "Pandora/Graphics/Constants.h"
+#include "Pandora/Graphics/GraphicsDevice.h"
 #include "Pandora/Pandora.h"
-#include "VulkanResourceAllocator.h"
 
 #include <limits>
 #include <vector>
 #include <array>
 
 #include <vulkan/vulkan.hpp>
- 
+
 namespace Pandora::Implementation {
 
-    inline constexpr auto MaximumId = std::numeric_limits<u32>::max();
-    inline constexpr auto MaximumDescriptorCountPerElement = 512;
-    inline constexpr auto MaximumDescriptorSetBindings = 1;
-
-    enum class VulkanDescriptorBindingElementType {
-        TextureSampler,
-        Uniform,
-        None
-    };
-
-    enum class VulkanDescriptorBindingLocationType {
-        Fragment,
-        Vertex,
-        None
-    };
-
     struct VulkanDescriptorSetIdentifier {
-        u32 bindingResourceId0 = MaximumId;
+        usize bindingResourceId0 = Constants::MaximumIdValue;
+        BindGroupElementType bindResourceType0{};
 
-        u32 layoutId{};
-        u32 frameId{};
+        usize layoutId{};
+        usize frameId{};
 
         bool isLocked{};
 
         inline bool operator==(const VulkanDescriptorSetIdentifier& left) const {
-            return !isLocked && frameId == left.frameId && layoutId == left.layoutId
-                && (bindingResourceId0 == MaximumId || bindingResourceId0 == left.bindingResourceId0);
+            return !isLocked && frameId == left.frameId 
+                && layoutId == left.layoutId 
+                && bindResourceType0 == left.bindResourceType0
+                && (bindingResourceId0 == Constants::MaximumIdValue || bindingResourceId0 == left.bindingResourceId0);
         }
     };
 
@@ -46,41 +34,48 @@ namespace Pandora::Implementation {
         VulkanDescriptorSetIdentifier identifier{};
     };
 
-    struct VulkanDescriptorSetLayoutIdentifier {
-        VulkanDescriptorBindingElementType bindingType0 = VulkanDescriptorBindingElementType::None;
-        VulkanDescriptorBindingLocationType bindingLocationType0 = VulkanDescriptorBindingLocationType::None;
-
-        inline bool operator==(const VulkanDescriptorSetLayoutIdentifier& left) const {
-            return bindingType0 == left.bindingType0 && bindingLocationType0 == left.bindingLocationType0;
-        }
-    };
-
     struct VulkanDescriptorSetLayout {
         vk::DescriptorSetLayout handle{};
-        VulkanDescriptorSetLayoutIdentifier identifier{};
+        BindGroup bindGroup{};
+    };
+
+    struct UniformUpdateInfo {
+        u32 bindingIndex;
+        usize descriptorSetId;
+        usize resourceId{};
+        vk::Buffer buffer{};
+    };
+
+    struct TextureUpdateInfo {
+        u32 bindingIndex;
+        usize descriptorSetId;
+        usize resourceId{};
+        vk::ImageView image{};
+        vk::Sampler sampler{};
     };
 
     class VulkanDescriptorCache {
     public:
         void initialize(vk::Device device);
+        void terminate();
 
-        u32 getOrAllocateDescriptorSet(VulkanDescriptorSetIdentifier identifier);
-        u32 getOrCreateDescriptorSetLayout(VulkanDescriptorSetLayoutIdentifier identifier);
+        usize getOrAllocateDescriptorSet(VulkanDescriptorSetIdentifier identifier);
+        usize getOrCreateDescriptorSetLayout(BindGroup bindGroup);
+        BindGroupElementType getBindGroupBindingType(usize descriptorLayoutId, u32 bindingIndex);
 
-        void updateUniformDescriptorSetBinding(u32 bindingIndex, u32 descriptorSetId, u32 resourceId, const VulkanResourceAllocator& resourceAllocator);
-        void updateTextureDescriptorSetBinding(u32 bindingIndex, u32 descriptorSetId, u32 resourceId, const VulkanResourceAllocator& resourceAllocator);
+        void updateUniformDescriptorSetBinding(const UniformUpdateInfo& uniformUpdateInfo);
+        void updateTextureDescriptorSetBinding(const TextureUpdateInfo& textureUpdateInfo);
         
-        void lockDescriptorSet(u32 descriptorSetId);
-        void clearFrameDescriptorSetLocks(u32 frameId);
+        void lockDescriptorSet(usize descriptorSetId);
+        void clearFrameDescriptorSetLocks(usize frameId);
 
-        bool isDescriptorSetBindingWritenTo(u32 bindingIndex, u32 descriptorSetId);
+        bool isDescriptorSetBindingWritenTo(u32 bindingIndex, usize descriptorSetId);
 
-        vk::DescriptorSetLayout getDescriptorSetLayoutHandle(u32 descriptorSetLayoutId) const;
-        vk::DescriptorSet getDescriptorSetHandle(u32 descriptorSetId) const;
+        vk::DescriptorSetLayout getDescriptorSetLayoutHandle(usize descriptorSetLayoutId) const;
+        vk::DescriptorSet getDescriptorSetHandle(usize descriptorSetId) const;
     private:
         vk::Device _device{};
-
-        std::array<vk::DescriptorPool, 2> _descriptorPools{};
+        vk::DescriptorPool _descriptorPool{};
 
         std::vector<VulkanDescriptorSet> _descriptorSets{};
         std::vector<VulkanDescriptorSetLayout> _descriptorSetLayouts{};

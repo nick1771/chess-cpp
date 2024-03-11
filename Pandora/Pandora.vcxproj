@@ -90,7 +90,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions);DEBUG_ENABLED</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -142,7 +142,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions);DEBUG_ENABLED</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -193,13 +193,13 @@
   <ItemGroup>
     <ClCompile Include="Color.cpp" />
     <ClCompile Include="File.cpp" />
-    <ClCompile Include="Graphics\Renderer.cpp" />
+    <ClCompile Include="Graphics\GraphicsDevice.cpp" />
+    <ClCompile Include="Graphics\SceneRenderer.cpp" />
+    <ClCompile Include="Graphics\Texture.cpp" />
+    <ClCompile Include="Graphics\Vulkan\VulkanGraphicsDevice.cpp" />
     <ClCompile Include="Graphics\Vulkan\VulkanCommandBufferHelper.cpp" />
+    <ClCompile Include="Graphics\Vulkan\VulkanStagingBufferCache.cpp" />
     <ClCompile Include="Graphics\Vulkan\VulkanDescriptorCache.cpp" />
-    <ClCompile Include="Graphics\Vulkan\VulkanPipeline.cpp" />
-    <ClCompile Include="Graphics\Vulkan\VulkanRendererBase.cpp" />
-    <ClCompile Include="Graphics\Vulkan\VulkanResourceAllocator.cpp" />
-    <ClCompile Include="Graphics\Vulkan\VulkanRenderer.cpp" />
     <ClCompile Include="Graphics\Vulkan\VulkanSurface.cpp" />
     <ClCompile Include="Graphics\Vulkan\VulkanAllocator.cpp" />
     <ClCompile Include="Graphics\Vulkan\VulkanExtensionDispatch.cpp" />
@@ -212,16 +212,20 @@
     <ClCompile Include="Windowing\Windows\WindowsWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Collections\ArrayVector.h" />
     <ClInclude Include="Color.h" />
-    <ClInclude Include="Graphics\Renderer.h" />
+    <ClInclude Include="Graphics\Camera.h" />
+    <ClInclude Include="Graphics\Constants.h" />
+    <ClInclude Include="Graphics\GraphicsDevice.h" />
+    <ClInclude Include="Graphics\SceneRenderer.h" />
+    <ClInclude Include="Graphics\Texture.h" />
+    <ClInclude Include="Graphics\Vulkan\VulkanGraphicsDevice.h" />
+    <ClInclude Include="Graphics\Vulkan\VulkanMapping.h" />
+    <ClInclude Include="Graphics\Vulkan\VulkanStagingBufferCache.h" />
     <ClInclude Include="Graphics\Vulkan\VulkanCommandBufferHelper.h" />
     <ClInclude Include="Graphics\Vulkan\VulkanDescriptorCache.h" />
-    <ClInclude Include="Graphics\Vulkan\VulkanPipeline.h" />
-    <ClInclude Include="Graphics\Vulkan\VulkanResourceAllocator.h" />
-    <ClInclude Include="Graphics\Vulkan\VulkanRenderer.h" />
     <ClInclude Include="Graphics\Vulkan\VulkanSurface.h" />
     <ClInclude Include="Graphics\Vulkan\VulkanAllocator.h" />
-    <ClInclude Include="Graphics\Vulkan\VulkanRendererBase.h" />
     <ClInclude Include="Graphics\Vulkan\VulkanExtensionDispatch.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Mathematics\Functions.h" />
@@ -231,6 +235,7 @@
     <ClInclude Include="Mathematics\Vector.h" />
     <ClInclude Include="Mathematics\Vector3.h" />
     <ClInclude Include="Mathematics\Vector4.h" />
+    <ClInclude Include="Graphics\Scene.h" />
     <ClInclude Include="Vendor\Stb\stb_image.h" />
     <ClInclude Include="Windowing\WindowEvent.h" />
     <ClInclude Include="File.h" />

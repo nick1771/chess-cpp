@@ -25,6 +25,10 @@ namespace Pandora {
         MouseButtonType buttonType{};
     };
 
+    struct MouseButtonPressedEvent {
+        MouseButtonType buttonType{};
+    };
+
     struct WindowResizeEndEvent {
         u32 width{};
         u32 height{};
@@ -36,6 +40,7 @@ namespace Pandora {
     class Event{
         using EventStorage = std::variant<
             MouseButtonReleaseEvent,
+            MouseButtonPressedEvent,
             WindowResizeBeginEvent,
             WindowResizeEndEvent
         >;

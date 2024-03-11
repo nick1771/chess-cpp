@@ -2,5 +2,5 @@
 
 namespace Pandora {
 
-    float DegreesToRadians(float degrees);
+    float degreesToRadians(float degrees);
 }

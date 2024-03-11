@@ -19,10 +19,13 @@ namespace Pandora::Implementation {
         ~WindowsWindow();
 
         void show() const;
-        void poll();
-     
+
+        void pollEvents();
+        void waitEvents();
+
         void setFramebufferSize(u32 width, u32 height);
         void setTitle(std::string_view title) const;
+        void setResizeable(bool isResizeable) const;
 
         static constexpr auto KeyboardKeyCount = static_cast<usize>(KeyboardKeyType::Unknown) + 1;
         static constexpr auto MouseButtonCount = static_cast<usize>(MouseButtonType::Unknown) + 1;

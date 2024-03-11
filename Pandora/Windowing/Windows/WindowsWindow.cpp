@@ -109,6 +109,7 @@ namespace Pandora::Implementation {
         }
         case WM_LBUTTONDOWN: {
             windowState->buttonState[static_cast<usize>(MouseButtonType::Left)] = true;
+            windowState->pendingEvents.emplace_back(MouseButtonPressedEvent{ MouseButtonType::Left });
             return 0;
         }
         case WM_LBUTTONUP: {
@@ -118,6 +119,7 @@ namespace Pandora::Implementation {
         }
         case WM_RBUTTONDOWN: {
             windowState->buttonState[static_cast<usize>(MouseButtonType::Right)] = true;
+            windowState->pendingEvents.emplace_back(MouseButtonPressedEvent{ MouseButtonType::Left });
             return 0;
         }
         case WM_RBUTTONUP: {
@@ -208,11 +210,22 @@ namespace Pandora::Implementation {
         ShowWindow(windowHandle, SW_SHOWNA);
     }
 
-    void WindowsWindow::poll() {
+    void WindowsWindow::pollEvents () {
         pendingEvents.clear();
 
         auto message = MSG{};
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+
+    void WindowsWindow::waitEvents() {
+        pendingEvents.clear();
+
+        auto message = MSG{};
+        while (GetMessageW(&message, nullptr, 0, 0)) {
+            printf("\nnew message!");
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }
@@ -233,5 +246,12 @@ namespace Pandora::Implementation {
     void WindowsWindow::setTitle(std::string_view title) const {
         const auto wideTitle = wideStringFromUtf8(title);
         SetWindowTextW(windowHandle, wideTitle.data());
+    }
+
+    void WindowsWindow::setResizeable(bool isResizeable) const {
+        const auto windowStyle = GetWindowLongW(windowHandle, GWL_STYLE);
+        const auto windowStyleWithoutResize = windowStyle & ~WS_SIZEBOX & ~WS_MAXIMIZEBOX;
+        
+        SetWindowLongW(windowHandle, GWL_STYLE, windowStyleWithoutResize);
     }
 }

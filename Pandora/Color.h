@@ -15,5 +15,7 @@ namespace Pandora {
         static Color8 Red;
         static Color8 Blue;
         static Color8 Green;
+        static Color8 White;
+        static Color8 Transparent;
     };
 }

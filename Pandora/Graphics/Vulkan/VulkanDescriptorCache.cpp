@@ -1,52 +1,42 @@
 #include "VulkanDescriptorCache.h"
+#include "VulkanMapping.h"
 
 #include <ranges>
 
 namespace Pandora::Implementation {
 
-    static vk::DescriptorType mapBindingElementTypeToDescriptorType(VulkanDescriptorBindingElementType type) {
-        switch (type) {
-        case VulkanDescriptorBindingElementType::TextureSampler:
-            return vk::DescriptorType::eCombinedImageSampler;
-        case VulkanDescriptorBindingElementType::Uniform:
-            return vk::DescriptorType::eUniformBuffer;
-        default:
-            throw std::runtime_error("Unreachable");
-        }
-    }
-
-    static vk::ShaderStageFlagBits mapBindingLocationTypeToShaderStage(VulkanDescriptorBindingLocationType type) {
-        switch (type) {
-        case VulkanDescriptorBindingLocationType::Fragment:
-            return vk::ShaderStageFlagBits::eFragment;
-        case VulkanDescriptorBindingLocationType::Vertex:
-            return vk::ShaderStageFlagBits::eVertex;
-        default:
-            throw std::runtime_error("Unreachable");
-        }
-    }
-
     void VulkanDescriptorCache::initialize(vk::Device device) {
         _device = device;
 
-        for (const auto [index, descriptorPool] : std::views::enumerate(_descriptorPools)) {
-            const auto bindingType = static_cast<VulkanDescriptorBindingElementType>(index);
-            const auto descriptorType = mapBindingElementTypeToDescriptorType(bindingType);
+        auto samplerDescriptorPoolSize = vk::DescriptorPoolSize{};
+        samplerDescriptorPoolSize.descriptorCount = Constants::MaximumTextureCount;
+        samplerDescriptorPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
 
-            auto descriptorPoolSize = vk::DescriptorPoolSize{};
-            descriptorPoolSize.descriptorCount = MaximumDescriptorCountPerElement;
-            descriptorPoolSize.type = descriptorType;
+        auto uniformBufferDescriptorPoolSize = vk::DescriptorPoolSize{};
+        uniformBufferDescriptorPoolSize.descriptorCount = Constants::MaximumUniformBufferCount;
+        uniformBufferDescriptorPoolSize.type = vk::DescriptorType::eUniformBuffer;
 
-            auto descriptorPoolCreateInfo = vk::DescriptorPoolCreateInfo{};
-            descriptorPoolCreateInfo.poolSizeCount = 1;
-            descriptorPoolCreateInfo.pPoolSizes = &descriptorPoolSize;
-            descriptorPoolCreateInfo.maxSets = MaximumDescriptorCountPerElement;
+        auto poolSizes = { 
+            samplerDescriptorPoolSize, 
+            uniformBufferDescriptorPoolSize 
+        };
 
-            descriptorPool = device.createDescriptorPool(descriptorPoolCreateInfo);
+        auto descriptorPoolCreateInfo = vk::DescriptorPoolCreateInfo{};
+        descriptorPoolCreateInfo.poolSizeCount = static_cast<u32>(poolSizes.size());
+        descriptorPoolCreateInfo.pPoolSizes = poolSizes.begin();
+        descriptorPoolCreateInfo.maxSets = Constants::MaximumTextureCount + Constants::MaximumUniformBufferCount;
+
+        _descriptorPool = device.createDescriptorPool(descriptorPoolCreateInfo);
+    }
+
+    void VulkanDescriptorCache::terminate() {
+        _device.destroyDescriptorPool(_descriptorPool);
+        for (const auto& layout : _descriptorSetLayouts) {
+            _device.destroyDescriptorSetLayout(layout.handle);
         }
     }
 
-    u32 VulkanDescriptorCache::getOrAllocateDescriptorSet(VulkanDescriptorSetIdentifier identifier) {
+    usize VulkanDescriptorCache::getOrAllocateDescriptorSet(VulkanDescriptorSetIdentifier identifier) {
         const auto isDescriptorSet = [&identifier](const auto& descriptorSet) { return descriptorSet.identifier == identifier; };
         const auto descriptorSetPosition = std::find_if(_descriptorSets.begin(), _descriptorSets.end(), isDescriptorSet);
 
@@ -57,11 +47,12 @@ namespace Pandora::Implementation {
         const auto& descriptorSetLayout = _descriptorSetLayouts[identifier.layoutId];
         
         auto descriptorSetAllocateInfo = vk::DescriptorSetAllocateInfo{};
-        descriptorSetAllocateInfo.descriptorPool = _descriptorPools[static_cast<usize>(descriptorSetLayout.identifier.bindingType0)];
+        descriptorSetAllocateInfo.descriptorPool = _descriptorPool;
         descriptorSetAllocateInfo.descriptorSetCount = 1;
         descriptorSetAllocateInfo.pSetLayouts = &descriptorSetLayout.handle;
 
-        identifier.bindingResourceId0 = MaximumId;
+        identifier.bindingResourceId0 = Constants::MaximumIdValue;
+        identifier.bindResourceType0 = identifier.bindResourceType0;
 
         const auto descriptorSet = _device.allocateDescriptorSets(descriptorSetAllocateInfo);
         _descriptorSets.emplace_back(descriptorSet.front(), identifier);
@@ -69,17 +60,17 @@ namespace Pandora::Implementation {
         return _descriptorSets.size() - 1;
     }
 
-    u32 VulkanDescriptorCache::getOrCreateDescriptorSetLayout(VulkanDescriptorSetLayoutIdentifier identifier) {
-        const auto isLayout = [&identifier](const auto& layout) { return layout.identifier == identifier; };
-        const auto identifierPosition = std::find_if(_descriptorSetLayouts.begin(), _descriptorSetLayouts.end(), isLayout);
+    usize VulkanDescriptorCache::getOrCreateDescriptorSetLayout(BindGroup bindGroup) {
+        const auto isLayout = [&bindGroup](const auto& layout) { return layout.bindGroup == bindGroup; };
+        const auto identifierPosition = std::ranges::find_if(_descriptorSetLayouts, isLayout);
 
         if (identifierPosition != _descriptorSetLayouts.end()) {
             return std::distance(_descriptorSetLayouts.begin(), identifierPosition);
         }
 
         auto descriptorSetLayoutBinding = vk::DescriptorSetLayoutBinding{};
-        descriptorSetLayoutBinding.descriptorType = mapBindingElementTypeToDescriptorType(identifier.bindingType0);
-        descriptorSetLayoutBinding.stageFlags = mapBindingLocationTypeToShaderStage(identifier.bindingLocationType0);
+        descriptorSetLayoutBinding.descriptorType = mapBindingElementTypeToDescriptorType(bindGroup.type0);
+        descriptorSetLayoutBinding.stageFlags = mapBindingLocationTypeToShaderStage(bindGroup.location0);
         descriptorSetLayoutBinding.descriptorCount = 1;
         descriptorSetLayoutBinding.binding = 0;
 
@@ -88,59 +79,62 @@ namespace Pandora::Implementation {
         descriptorSetLayoutCreateInfo.pBindings = &descriptorSetLayoutBinding;
 
         const auto descriptorSetLayout = _device.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
-        _descriptorSetLayouts.emplace_back(descriptorSetLayout, identifier);
+        _descriptorSetLayouts.emplace_back(descriptorSetLayout, bindGroup);
 
         return _descriptorSetLayouts.size() - 1;
     }
 
-    void VulkanDescriptorCache::updateUniformDescriptorSetBinding(u32 bindingIndex, u32 descriptorSetId, u32 resourceId, const VulkanResourceAllocator& resourceAllocator) {
-        const auto& bufferResource = resourceAllocator.getResource<VulkanBufferResource>(resourceId);
-        auto& descriptorSet = _descriptorSets[descriptorSetId];
+    BindGroupElementType VulkanDescriptorCache::getBindGroupBindingType(usize descriptorLayoutId, u32 bindingIndex) {
+        const auto& descriptorSetLayout = _descriptorSetLayouts[descriptorLayoutId];
+        return descriptorSetLayout.bindGroup.type0;
+    }
+
+    void VulkanDescriptorCache::updateUniformDescriptorSetBinding(const UniformUpdateInfo& uniformUpdateInfo) {
+        auto& descriptorSet = _descriptorSets[uniformUpdateInfo.descriptorSetId];
 
         auto bufferInfo = vk::DescriptorBufferInfo{};
-        bufferInfo.buffer = bufferResource.handle;
+        bufferInfo.buffer = uniformUpdateInfo.buffer;
         bufferInfo.range = vk::WholeSize;
 
         auto bufferWriteDescriptorSet = vk::WriteDescriptorSet{};
         bufferWriteDescriptorSet.dstSet = descriptorSet.handle;
-        bufferWriteDescriptorSet.dstBinding = bindingIndex;
+        bufferWriteDescriptorSet.dstBinding = uniformUpdateInfo.bindingIndex;
         bufferWriteDescriptorSet.dstArrayElement = 0;
         bufferWriteDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
         bufferWriteDescriptorSet.descriptorCount = 1;
         bufferWriteDescriptorSet.pBufferInfo = &bufferInfo;
 
-        descriptorSet.identifier.bindingResourceId0 = resourceId;
+        descriptorSet.identifier.bindingResourceId0 = uniformUpdateInfo.resourceId;
 
         _device.updateDescriptorSets(bufferWriteDescriptorSet, nullptr);
     }
 
-    void VulkanDescriptorCache::updateTextureDescriptorSetBinding(u32 bindingIndex, u32 descriptorSetId, u32 resourceId, const VulkanResourceAllocator& resourceAllocator) {
-        const auto& textureResource = resourceAllocator.getResource<VulkanTextureResource>(resourceId);
-        auto& descriptorSet = _descriptorSets[descriptorSetId];
+    void VulkanDescriptorCache::updateTextureDescriptorSetBinding(const TextureUpdateInfo& textureUpdateInfo) {
+        auto& descriptorSet = _descriptorSets[textureUpdateInfo.descriptorSetId];
 
         auto imageInfo = vk::DescriptorImageInfo{};
-        imageInfo.imageView = textureResource.view;
+        imageInfo.imageView = textureUpdateInfo.image;
         imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        imageInfo.sampler = textureResource.sampler;
+        imageInfo.sampler = textureUpdateInfo.sampler;
 
         auto imageWriteDescriptorSet = vk::WriteDescriptorSet{};
         imageWriteDescriptorSet.dstSet = descriptorSet.handle;
-        imageWriteDescriptorSet.dstBinding = bindingIndex;
+        imageWriteDescriptorSet.dstBinding = textureUpdateInfo.bindingIndex;
         imageWriteDescriptorSet.dstArrayElement = 0;
         imageWriteDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
         imageWriteDescriptorSet.descriptorCount = 1;
         imageWriteDescriptorSet.pImageInfo = &imageInfo;
 
-        descriptorSet.identifier.bindingResourceId0 = resourceId;
+        descriptorSet.identifier.bindingResourceId0 = textureUpdateInfo.resourceId;
 
         _device.updateDescriptorSets(imageWriteDescriptorSet, nullptr);
     }
 
-    void VulkanDescriptorCache::lockDescriptorSet(u32 descriptorSetId) {
+    void VulkanDescriptorCache::lockDescriptorSet(usize descriptorSetId) {
         _descriptorSets[descriptorSetId].identifier.isLocked = true;
     }
 
-    void VulkanDescriptorCache::clearFrameDescriptorSetLocks(u32 frameId) {
+    void VulkanDescriptorCache::clearFrameDescriptorSetLocks(usize frameId) {
         for (auto& descriptorSet : _descriptorSets) {
             if (descriptorSet.identifier.frameId == frameId) {
                 descriptorSet.identifier.isLocked = false;
@@ -148,15 +142,15 @@ namespace Pandora::Implementation {
         }
     }
 
-    bool VulkanDescriptorCache::isDescriptorSetBindingWritenTo(u32 bindingIndex, u32 descriptorSetId) {
-        return _descriptorSets[descriptorSetId].identifier.bindingResourceId0 != MaximumId;
+    bool VulkanDescriptorCache::isDescriptorSetBindingWritenTo(u32 bindingIndex, usize descriptorSetId) {
+        return _descriptorSets[descriptorSetId].identifier.bindingResourceId0 != Constants::MaximumIdValue;
     }
 
-    vk::DescriptorSetLayout VulkanDescriptorCache::getDescriptorSetLayoutHandle(u32 descriptorSetLayoutId) const {
+    vk::DescriptorSetLayout VulkanDescriptorCache::getDescriptorSetLayoutHandle(usize descriptorSetLayoutId) const {
         return _descriptorSetLayouts[descriptorSetLayoutId].handle;
     }
-    
-    vk::DescriptorSet VulkanDescriptorCache::getDescriptorSetHandle(u32 descriptorSetId) const {
+
+    vk::DescriptorSet VulkanDescriptorCache::getDescriptorSetHandle(usize descriptorSetId) const {
         return _descriptorSets[descriptorSetId].handle;
     }
 }

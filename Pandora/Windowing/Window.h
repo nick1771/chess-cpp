@@ -21,7 +21,9 @@ namespace Pandora {
         ~Window();
 
         void show() const;
-        void poll();
+
+        void pollEvents();
+        void waitEvents();
 
         bool isKeyPressed(KeyboardKeyType keyType) const;
         bool isMouseButtonPressed(MouseButtonType buttonType) const;
@@ -29,6 +31,7 @@ namespace Pandora {
 
         void setFramebufferSize(u32 width, u32 height);
         void setCloseRequested(bool isCloseRequested);
+        void setResizeable(bool isResizeable) const;
         void setTitle(std::string_view title) const;
 
         std::vector<Event> getPendingEvents();

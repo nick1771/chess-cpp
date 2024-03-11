@@ -21,4 +21,8 @@ namespace Pandora::Implementation {
 
         return static_cast<vk::SurfaceKHR>(surfaceHandle);
     }
+
+    void destroyVulkanSurface(vk::Instance instance, vk::SurfaceKHR surface) {
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+    }
 }
